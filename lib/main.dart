@@ -26,7 +26,11 @@ void main() {
               },
               child: Container(
                 margin: const EdgeInsets.only(top: 40, left: 10),
-                child: const Icon(Icons.pause_rounded, color: Colors.white),
+                child: Image.asset(
+                  "assets/images/pause-button.png",
+                  fit: BoxFit.cover,
+                  height: 32,
+                ),
               ),
             ),
           );
@@ -39,13 +43,10 @@ void main() {
                 game.overlays.add("ButtonPause");
                 game.overlays.remove("PauseOverlay");
               },
-              child: Container(
+              child: Image.asset(
+                "assets/images/pause-overlay.png",
+                fit: BoxFit.cover,
                 height: game.size.x * .6,
-                width: game.size.x * .6,
-                decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xffFFB72B)),
-                child: const Center(
-                  child: Icon(Icons.play_arrow_rounded, color: Color(0xff25253D), size: 80),
-                ),
               ),
             ),
           );

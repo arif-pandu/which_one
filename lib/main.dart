@@ -1,15 +1,57 @@
 import 'dart:async';
 import 'package:flame/components.dart';
 import 'package:flame/effects.dart';
+import 'package:flame/events.dart';
 import 'package:flame/game.dart';
 import 'package:flame/input.dart';
-import 'package:flame/src/gestures/events.dart' as fGesture;
 import 'package:flutter/material.dart';
 import 'dart:async' as sync;
 
 void main() {
   runApp(
-    GameWidget(game: GameplayFlame()),
+    GameWidget(
+      game: GameplayFlame(),
+      initialActiveOverlays: const [
+        "ButtonPause",
+      ],
+      overlayBuilderMap: {
+        "ButtonPause": (context, GameplayFlame game) {
+          return Align(
+            alignment: Alignment.topLeft,
+            child: GestureDetector(
+              onTap: () {
+                game.pauseEngine();
+                game.overlays.remove("ButtonPause");
+                game.overlays.add("PauseOverlay");
+              },
+              child: Container(
+                margin: const EdgeInsets.only(top: 40, left: 10),
+                child: const Icon(Icons.pause_rounded, color: Colors.white),
+              ),
+            ),
+          );
+        },
+        "PauseOverlay": (context, GameplayFlame game) {
+          return Center(
+            child: GestureDetector(
+              onTap: () {
+                game.resumeEngine();
+                game.overlays.add("ButtonPause");
+                game.overlays.remove("PauseOverlay");
+              },
+              child: Container(
+                height: game.size.x * .6,
+                width: game.size.x * .6,
+                decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xffFFB72B)),
+                child: const Center(
+                  child: Icon(Icons.play_arrow_rounded, color: Color(0xff25253D), size: 80),
+                ),
+              ),
+            ),
+          );
+        }
+      },
+    ),
   );
 }
 
@@ -56,6 +98,7 @@ class GameplayFlame extends FlameGame with PanDetector, HasCollisionDetection {
     );
 
     add(player);
+    add(FpsTextComponent(position: Vector2(size.x, 40), anchor: Anchor.topRight));
 
     startSpawner();
   }
@@ -67,7 +110,7 @@ class GameplayFlame extends FlameGame with PanDetector, HasCollisionDetection {
   }
 
   @override
-  void onPanUpdate(fGesture.DragUpdateInfo info) {
+  void onPanUpdate(DragUpdateInfo info) {
     if (info.eventPosition.global.x < 64) {
       player.position.x = 64;
     } else if (info.eventPosition.global.x > size.x - 64) {
@@ -166,8 +209,8 @@ class GateObject extends SpriteComponent with HasGameRef<GameplayFlame> {
     isCollide = true;
     priority = 1000;
 
-    bool isWithinRangeLeft = gameRef.player.absoluteCenter.x > absoluteCenter.x - size.x / 2;
-    bool isWithinRangeRight = gameRef.player.absoluteCenter.x < absoluteCenter.x + size.x / 2;
+    bool isWithinRangeLeft = gameRef.player.absoluteCenter.x > absoluteCenter.x - size.x * .25;
+    bool isWithinRangeRight = gameRef.player.absoluteCenter.x < absoluteCenter.x + size.x * .25;
 
     if (isWithinRangeLeft && isWithinRangeRight) {
       if (isLeft) {
@@ -177,7 +220,7 @@ class GateObject extends SpriteComponent with HasGameRef<GameplayFlame> {
       }
     }
 
-    sync.Timer(const Duration(milliseconds: 250), () {
+    sync.Timer(const Duration(milliseconds: 200), () {
       removeFromParent();
     });
   }

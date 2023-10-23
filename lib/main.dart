@@ -11,19 +11,12 @@ void main() {
   runApp(
     GameWidget(
       game: GameplayFlame(),
-      initialActiveOverlays: const [
-        "ButtonPause",
-      ],
       overlayBuilderMap: {
         "ButtonPause": (context, GameplayFlame game) {
           return Align(
             alignment: Alignment.topLeft,
             child: GestureDetector(
-              onTap: () {
-                game.pauseEngine();
-                game.overlays.remove("ButtonPause");
-                game.overlays.add("PauseOverlay");
-              },
+              onTap: () => game.pauseGame(),
               child: Container(
                 margin: const EdgeInsets.only(top: 40, left: 10),
                 child: Image.asset(
@@ -35,22 +28,42 @@ void main() {
             ),
           );
         },
-        "PauseOverlay": (context, GameplayFlame game) {
+        "Overlay": (context, GameplayFlame game) {
           return Center(
             child: GestureDetector(
-              onTap: () {
-                game.resumeEngine();
-                game.overlays.add("ButtonPause");
-                game.overlays.remove("PauseOverlay");
-              },
+              onTap: () => game.isGameOver ? game.resetGame() : game.resumeGame(),
               child: Image.asset(
-                "assets/images/pause-overlay.png",
+                "assets/images/${game.isGameOver ? "gameover" : "pause"}-overlay.png",
                 fit: BoxFit.cover,
                 height: game.size.x * .6,
               ),
             ),
           );
-        }
+        },
+        "DisplayText": (context, GameplayFlame game) {
+          return Positioned(
+            top: 40,
+            left: game.size.x * .2,
+            child: Container(
+              width: game.size.x * .6,
+              height: game.size.x * .24,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: const BoxDecoration(
+                image: DecorationImage(image: AssetImage("assets/images/text-area.png"), fit: BoxFit.cover),
+              ),
+              child: Center(
+                child: Text(
+                  game.displayText,
+                  style: const TextStyle(
+                    fontSize: 30,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
       },
     ),
   );
@@ -63,6 +76,9 @@ class GameplayFlame extends FlameGame with PanDetector, HasCollisionDetection {
   late Vector2 gateSize;
   late Vector2 gateSizeExpand;
   late Timer gateSpawner;
+  String displayText = "0";
+  int answerStrike = 0;
+  bool isGameOver = false;
 
   @override
   Color backgroundColor() {
@@ -74,7 +90,8 @@ class GameplayFlame extends FlameGame with PanDetector, HasCollisionDetection {
     /// Init Data
     gateSprite = await loadSprite('gate.png');
     gateSize = Vector2(size.x * .36, size.x * .2);
-    gateSizeExpand = Vector2(size.x * .49, size.x * .49 * 20 / 36);
+    gateSizeExpand = Vector2(size.x * .49, size.x * .49 * 20 / 36) * 1.5;
+    overlays.addAll(["ButtonPause", "DisplayText"]);
 
     /// Background
     add(
@@ -99,7 +116,7 @@ class GameplayFlame extends FlameGame with PanDetector, HasCollisionDetection {
     );
 
     add(player);
-    add(FpsTextComponent(position: Vector2(size.x, 40), anchor: Anchor.topRight));
+    add(FpsTextComponent(position: Vector2(size.x, 40), anchor: Anchor.topRight, scale: Vector2.all(.5)));
 
     startSpawner();
   }
@@ -124,7 +141,7 @@ class GameplayFlame extends FlameGame with PanDetector, HasCollisionDetection {
   void startSpawner() {
     spawnGates();
     gateSpawner = Timer(
-      intervalGate - 2,
+      intervalGate - 3,
       onTick: () => spawnGates(),
       repeat: true,
       autoStart: true,
@@ -133,6 +150,7 @@ class GameplayFlame extends FlameGame with PanDetector, HasCollisionDetection {
 
   void spawnGates() {
     add(GateObject(
+        isTheAnswer: true,
         theSprite: gateSprite,
         initPosition: Vector2((size.x / 2) - 5, size.y / 2),
         initSize: gateSize * .5,
@@ -142,6 +160,7 @@ class GameplayFlame extends FlameGame with PanDetector, HasCollisionDetection {
         displayText: ": 2"));
 
     add(GateObject(
+        isTheAnswer: false,
         theSprite: gateSprite,
         initPosition: Vector2((size.x / 2) + 5, size.y / 2),
         initSize: gateSize * .5,
@@ -149,6 +168,31 @@ class GameplayFlame extends FlameGame with PanDetector, HasCollisionDetection {
         expandSize: gateSizeExpand,
         intervalGate: intervalGate,
         displayText: "x 2"));
+  }
+
+  void gameover() {
+    overlays.add("Overlay");
+    isGameOver = true;
+    pauseEngine();
+  }
+
+  void resetGame() {
+    isGameOver = false;
+    answerStrike = 0;
+    gateSpawner.reset();
+    player.position.x = size.x / 2;
+  }
+
+  void pauseGame() {
+    pauseEngine();
+    overlays.remove("ButtonPause");
+    overlays.add("Overlay");
+  }
+
+  void resumeGame() {
+    resumeEngine();
+    overlays.add("ButtonPause");
+    overlays.remove("Overlay");
   }
 }
 
@@ -161,6 +205,7 @@ class GateObject extends SpriteComponent with HasGameRef<GameplayFlame> {
     required this.expandSize,
     required this.intervalGate,
     required this.displayText,
+    required this.isTheAnswer,
   }) : super(
           sprite: theSprite,
           position: initPosition,
@@ -179,6 +224,7 @@ class GateObject extends SpriteComponent with HasGameRef<GameplayFlame> {
   bool isCollide = false;
   late TextComponent textComponent;
   final String displayText;
+  final bool isTheAnswer;
 
   @override
   FutureOr<void> onLoad() {
@@ -227,10 +273,10 @@ class GateObject extends SpriteComponent with HasGameRef<GameplayFlame> {
     bool isWithinRangeRight = gameRef.player.absoluteCenter.x < absoluteCenter.x + size.x * .25;
 
     if (isWithinRangeLeft && isWithinRangeRight) {
-      if (isLeft) {
-        print("NABRAK KIRI");
+      if (isTheAnswer) {
+        game.answerStrike++;
       } else {
-        print("NABRAK KANAN");
+        game.gameover();
       }
     }
 

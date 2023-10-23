@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:math';
 import 'package:flame/components.dart';
 import 'package:flame/effects.dart';
 import 'package:flame/events.dart';
@@ -6,6 +8,7 @@ import 'package:flame/game.dart';
 import 'package:flame/input.dart';
 import 'package:flutter/material.dart';
 import 'dart:async' as sync;
+import 'package:flutter/services.dart';
 
 void main() {
   runApp(
@@ -15,10 +18,10 @@ void main() {
         "ButtonPause": (context, GameplayFlame game) {
           return Align(
             alignment: Alignment.topLeft,
-            child: GestureDetector(
-              onTap: () => game.pauseGame(),
-              child: Container(
-                margin: const EdgeInsets.only(top: 40, left: 10),
+            child: Container(
+              margin: const EdgeInsets.only(top: 40, left: 10),
+              child: GestureDetector(
+                onTap: () => game.pauseGame(),
                 child: Image.asset(
                   "assets/images/pause-button.png",
                   fit: BoxFit.cover,
@@ -40,45 +43,26 @@ void main() {
             ),
           );
         },
-        "DisplayText": (context, GameplayFlame game) {
-          return Positioned(
-            top: 40,
-            left: game.size.x * .2,
-            child: Container(
-              width: game.size.x * .6,
-              height: game.size.x * .24,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: const BoxDecoration(
-                image: DecorationImage(image: AssetImage("assets/images/text-area.png"), fit: BoxFit.cover),
-              ),
-              child: Center(
-                child: Text(
-                  game.displayText,
-                  style: const TextStyle(
-                    fontSize: 30,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
       },
     ),
   );
 }
 
 class GameplayFlame extends FlameGame with PanDetector, HasCollisionDetection {
+  List<List<String>> questionsData = [];
+
   double intervalGate = 8;
   late SpriteAnimationComponent player;
   late Sprite gateSprite;
   late Vector2 gateSize;
   late Vector2 gateSizeExpand;
   late Timer gateSpawner;
-  String displayText = "0";
-  int answerStrike = 0;
   bool isGameOver = false;
+  int randomIndex = 0;
+  int nextRandomIndex = 0;
+  late TextComponent questionText;
+  late TextComponent scoreText;
+  bool isFirstSpawn = true;
 
   @override
   Color backgroundColor() {
@@ -87,13 +71,12 @@ class GameplayFlame extends FlameGame with PanDetector, HasCollisionDetection {
 
   @override
   FutureOr<void> onLoad() async {
-    /// Init Data
     gateSprite = await loadSprite('gate.png');
     gateSize = Vector2(size.x * .36, size.x * .2);
     gateSizeExpand = Vector2(size.x * .49, size.x * .49 * 20 / 36) * 1.5;
-    overlays.addAll(["ButtonPause", "DisplayText"]);
+    overlays.addAll(["ButtonPause"]);
+    prepareJson();
 
-    /// Background
     add(
       SpriteComponent(
         sprite: Sprite(await images.load("bg.png")),
@@ -103,7 +86,17 @@ class GameplayFlame extends FlameGame with PanDetector, HasCollisionDetection {
       ),
     );
 
-    /// Player
+    questionText = TextComponent(
+        text: "0",
+        size: Vector2(size.x * .4, size.y * .2),
+        position: Vector2(size.x / 2, size.y * .1),
+        anchor: Anchor.center);
+    scoreText = TextComponent(
+        text: "0",
+        size: Vector2(size.x * .1, size.x * .1),
+        position: Vector2(size.x - 10, size.y * .1),
+        anchor: Anchor.centerRight);
+
     player = SpriteAnimationComponent(
       animation: await loadSpriteAnimation(
         "player-sprite.png",
@@ -115,9 +108,8 @@ class GameplayFlame extends FlameGame with PanDetector, HasCollisionDetection {
       priority: 999,
     );
 
-    add(player);
-    add(FpsTextComponent(position: Vector2(size.x, 40), anchor: Anchor.topRight, scale: Vector2.all(.5)));
-
+    add(FpsTextComponent(position: Vector2(size.x, size.y * .1 + 20), anchor: Anchor.topRight, scale: Vector2.all(.5)));
+    addAll([player, questionText, scoreText]);
     startSpawner();
   }
 
@@ -138,6 +130,14 @@ class GameplayFlame extends FlameGame with PanDetector, HasCollisionDetection {
     }
   }
 
+  void prepareJson() async {
+    String jsonData = await rootBundle.loadString('assets/json/question.json');
+    Map<String, dynamic> jsonMap = json.decode(jsonData);
+    questionsData = (jsonMap['question'] as List<dynamic>)
+        .map((questionData) => (questionData as List<dynamic>).map((answer) => answer.toString()).toList())
+        .toList();
+  }
+
   void startSpawner() {
     spawnGates();
     gateSpawner = Timer(
@@ -149,25 +149,31 @@ class GameplayFlame extends FlameGame with PanDetector, HasCollisionDetection {
   }
 
   void spawnGates() {
+    randomIndex = Random().nextInt(questionsData.length);
+    if (isFirstSpawn) {
+      isFirstSpawn = false;
+      questionText.text = questionsData[randomIndex][0];
+    }
+
     add(GateObject(
-        isTheAnswer: true,
+        isTheAnswer: questionsData[randomIndex][3] == "left",
         theSprite: gateSprite,
         initPosition: Vector2((size.x / 2) - 5, size.y / 2),
         initSize: gateSize * .5,
         isLeft: true,
         expandSize: gateSizeExpand,
         intervalGate: intervalGate,
-        displayText: ": 2"));
+        displayText: questionsData[randomIndex][1]));
 
     add(GateObject(
-        isTheAnswer: false,
+        isTheAnswer: questionsData[randomIndex][3] == "right",
         theSprite: gateSprite,
         initPosition: Vector2((size.x / 2) + 5, size.y / 2),
         initSize: gateSize * .5,
         isLeft: false,
         expandSize: gateSizeExpand,
         intervalGate: intervalGate,
-        displayText: "x 2"));
+        displayText: questionsData[randomIndex][2]));
   }
 
   void gameover() {
@@ -178,9 +184,10 @@ class GameplayFlame extends FlameGame with PanDetector, HasCollisionDetection {
 
   void resetGame() {
     isGameOver = false;
-    answerStrike = 0;
+    scoreText.text = "0";
     gateSpawner.reset();
     player.position.x = size.x / 2;
+    isFirstSpawn = true;
   }
 
   void pauseGame() {
@@ -193,6 +200,12 @@ class GameplayFlame extends FlameGame with PanDetector, HasCollisionDetection {
     resumeEngine();
     overlays.add("ButtonPause");
     overlays.remove("Overlay");
+  }
+
+  void answerCorrect() {
+    nextRandomIndex = randomIndex;
+    questionText.text = questionsData[nextRandomIndex][0];
+    scoreText.text = (int.parse(scoreText.text) + 1).toString();
   }
 }
 
@@ -274,7 +287,7 @@ class GateObject extends SpriteComponent with HasGameRef<GameplayFlame> {
 
     if (isWithinRangeLeft && isWithinRangeRight) {
       if (isTheAnswer) {
-        game.answerStrike++;
+        game.answerCorrect();
       } else {
         game.gameover();
       }

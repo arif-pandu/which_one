@@ -124,7 +124,7 @@ class GameplayFlame extends FlameGame with PanDetector, HasCollisionDetection {
   void startSpawner() {
     spawnGates();
     gateSpawner = Timer(
-      intervalGate,
+      intervalGate - 2,
       onTick: () => spawnGates(),
       repeat: true,
       autoStart: true,
@@ -133,34 +133,35 @@ class GameplayFlame extends FlameGame with PanDetector, HasCollisionDetection {
 
   void spawnGates() {
     add(GateObject(
-      gateSprite,
-      Vector2((size.x / 2) - 5, size.y / 2),
-      gateSize * .5,
-      true,
-      gateSizeExpand,
-      intervalGate,
-    ));
+        theSprite: gateSprite,
+        initPosition: Vector2((size.x / 2) - 5, size.y / 2),
+        initSize: gateSize * .5,
+        isLeft: true,
+        expandSize: gateSizeExpand,
+        intervalGate: intervalGate,
+        displayText: ": 2"));
 
     add(GateObject(
-      gateSprite,
-      Vector2((size.x / 2) + 5, size.y / 2),
-      gateSize * .5,
-      false,
-      gateSizeExpand,
-      intervalGate,
-    ));
+        theSprite: gateSprite,
+        initPosition: Vector2((size.x / 2) + 5, size.y / 2),
+        initSize: gateSize * .5,
+        isLeft: false,
+        expandSize: gateSizeExpand,
+        intervalGate: intervalGate,
+        displayText: "x 2"));
   }
 }
 
 class GateObject extends SpriteComponent with HasGameRef<GameplayFlame> {
-  GateObject(
-    Sprite theSprite,
-    Vector2 initPosition,
-    Vector2 initSize,
-    this.isLeft,
-    this.expandSize,
-    this.intervalGate,
-  ) : super(
+  GateObject({
+    required Sprite theSprite,
+    required Vector2 initPosition,
+    required Vector2 initSize,
+    required this.isLeft,
+    required this.expandSize,
+    required this.intervalGate,
+    required this.displayText,
+  }) : super(
           sprite: theSprite,
           position: initPosition,
           size: initSize,
@@ -176,12 +177,20 @@ class GateObject extends SpriteComponent with HasGameRef<GameplayFlame> {
   final double intervalGate;
   final bool isLeft;
   bool isCollide = false;
+  late TextComponent textComponent;
+  final String displayText;
 
   @override
   FutureOr<void> onLoad() {
     effectController = EffectController(
       duration: intervalGate * 5,
       curve: Curves.fastOutSlowIn,
+    );
+    textComponent = TextComponent(
+      text: displayText,
+      textRenderer: TextPaint(style: const TextStyle(fontSize: 12, color: Color(0xff25253D))),
+      anchor: Anchor.center,
+      position: size / 2,
     );
 
     add(SizeEffect.to(expandSize, effectController));
@@ -191,11 +200,15 @@ class GateObject extends SpriteComponent with HasGameRef<GameplayFlame> {
       effectController,
     ));
 
+    add(textComponent);
+    textComponent.add(ScaleEffect.to(Vector2(expandSize.x / size.x, expandSize.y / size.y), effectController));
+
     return super.onLoad();
   }
 
   @override
   void update(double dt) {
+    textComponent.position = size / 2;
     if (effectController.progress > 0.75) {
       removeFromParent();
     }

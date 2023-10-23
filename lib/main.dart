@@ -282,12 +282,16 @@ class GateObject extends SpriteComponent with HasGameRef<GameplayFlame> {
     isCollide = true;
     priority = 1000;
 
-    bool isWithinRangeLeft = gameRef.player.absoluteCenter.x > absoluteCenter.x - size.x * .25;
-    bool isWithinRangeRight = gameRef.player.absoluteCenter.x < absoluteCenter.x + size.x * .25;
-
-    if (isWithinRangeLeft && isWithinRangeRight) {
-      if (isTheAnswer) {
-        game.answerCorrect();
+    bool isInRangeLeft = gameRef.player.absoluteCenter.x < (gameRef.size.x / 2) - expandSize.x / 6;
+    bool isInRangeRight = gameRef.player.absoluteCenter.x > (gameRef.size.x / 2) + expandSize.x / 6;
+    bool isLeftSided = gameRef.player.absoluteCenter.x <= gameRef.size.x / 2;
+    if (isLeft && isLeftSided) {
+      if (isInRangeLeft || isInRangeRight) {
+        if (isTheAnswer) {
+          game.answerCorrect();
+        } else {
+          game.gameover();
+        }
       } else {
         game.gameover();
       }

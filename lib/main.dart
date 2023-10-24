@@ -50,7 +50,6 @@ void main() {
 
 class GameplayFlame extends FlameGame with PanDetector, HasCollisionDetection {
   List<List<String>> questionsData = [];
-
   double intervalGate = 8;
   late SpriteAnimationComponent player;
   late Sprite gateSprite;
@@ -87,15 +86,16 @@ class GameplayFlame extends FlameGame with PanDetector, HasCollisionDetection {
     );
 
     questionText = TextComponent(
-        text: "0",
-        size: Vector2(size.x * .4, size.y * .2),
-        position: Vector2(size.x / 2, size.y * .1),
-        anchor: Anchor.center);
-    scoreText = TextComponent(
-        text: "0",
-        size: Vector2(size.x * .1, size.x * .1),
-        position: Vector2(size.x - 10, size.y * .1),
-        anchor: Anchor.centerRight);
+      size: Vector2(size.x * .4, size.y * .2),
+      position: Vector2(size.x / 2, size.y * .1),
+      anchor: Anchor.center,
+    );
+
+    scoreText = TextComponent()
+      ..text = "0"
+      ..size = Vector2(size.x * .1, size.x * .1)
+      ..position = Vector2(size.x - 10, size.y * .1)
+      ..anchor = Anchor.centerRight;
 
     player = SpriteAnimationComponent(
       animation: await loadSpriteAnimation(

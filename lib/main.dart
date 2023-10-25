@@ -25,7 +25,7 @@ void main() {
                 child: Image.asset(
                   'assets/images/pause-button.png',
                   fit: BoxFit.cover,
-                  height: 32,
+                  height: g.size.x * 0.1,
                 ),
               ),
             ),
@@ -70,45 +70,50 @@ class GameplayFlame extends FlameGame with PanDetector, HasCollisionDetection {
 
   @override
   FutureOr<void> onLoad() async {
-    prepareJson();
+    final jsonData = await rootBundle.loadString('assets/json/question.json');
+    final jsonMap = json.decode(jsonData) as Map<String, dynamic>;
+    questionsData = (jsonMap['question'] as List<dynamic>)
+        .map(
+          (questionData) => (questionData as List<dynamic>)
+              .map(
+                (answer) => answer.toString(),
+              )
+              .toList(),
+        )
+        .toList();
     gateSprite = await loadSprite('gate.png');
     gateSize = Vector2(size.x * .36, size.x * .2);
     gateSizeExpand = Vector2(size.x * .49, size.x * .49 * 20 / 36) * 1.5;
-    overlays.addAll(['ButtonPause']);
+    overlays.add('ButtonPause');
     add(
-      SpriteComponent(
-        sprite: Sprite(await images.load('bg.png')),
-        position: size / 2,
-        size: size,
-        anchor: Anchor.center,
-      ),
+      SpriteComponent()
+        ..sprite = Sprite(await images.load('bg.png'))
+        ..position = size / 2
+        ..size = size
+        ..anchor = Anchor.center,
     );
-    questionText = TextComponent(
-      size: Vector2(size.x * .4, size.y * .2),
-      position: Vector2(size.x / 2, size.y * .1),
-      anchor: Anchor.center,
-    );
-
+    questionText = TextComponent()
+      ..size = Vector2(size.x * .4, size.y * .2)
+      ..position = Vector2(size.x / 2, size.y * .1)
+      ..anchor = Anchor.center;
     scoreText = TextComponent()
       ..text = '0'
       ..size = Vector2(size.x * .1, size.x * .1)
       ..position = Vector2(size.x - 10, size.y * .1)
       ..anchor = Anchor.centerRight;
-
-    player = SpriteAnimationComponent(
-      animation: await loadSpriteAnimation(
+    player = SpriteAnimationComponent()
+      ..animation = await loadSpriteAnimation(
         'player-sprite.png',
         SpriteAnimationData.sequenced(
           amount: 8,
           stepTime: .1,
           textureSize: Vector2.all(256),
         ),
-      ),
-      position: Vector2(size.x / 2, size.y - size.x * .25),
-      size: Vector2.all(size.x * .25),
-      anchor: Anchor.center,
-      priority: 999,
-    );
+      )
+      ..position = Vector2(size.x / 2, size.y - size.x * .25)
+      ..size = Vector2.all(size.x * .25)
+      ..anchor = Anchor.center
+      ..priority = 999;
     addAll([player, questionText, scoreText]);
     startSpawner();
   }
@@ -128,20 +133,6 @@ class GameplayFlame extends FlameGame with PanDetector, HasCollisionDetection {
     } else {
       player.position.x = info.eventPosition.global.x;
     }
-  }
-
-  Future<void> prepareJson() async {
-    final jsonData = await rootBundle.loadString('assets/json/question.json');
-    final jsonMap = json.decode(jsonData) as Map<String, dynamic>;
-    questionsData = (jsonMap['question'] as List<dynamic>)
-        .map(
-          (questionData) => (questionData as List<dynamic>)
-              .map(
-                (answer) => answer.toString(),
-              )
-              .toList(),
-        )
-        .toList();
   }
 
   void startSpawner() {
@@ -186,6 +177,7 @@ class GameplayFlame extends FlameGame with PanDetector, HasCollisionDetection {
   }
 
   void gameover() {
+    overlays.remove('ButtonPause');
     overlays.add('Overlay');
     isGameOver = true;
     pauseEngine();
@@ -271,24 +263,30 @@ class GateObject extends SpriteComponent with HasGameRef<GameplayFlame> {
   void update(double dt) {
     textComponent.position = size / 2;
     if (ec.progress > 0.75) {
-      removeFromParent();
-    }
-    if (ec.progress > 0.7 && !isCollide) {
+      print("JUST REMOVE HERE");
+      sync.Timer(const Duration(milliseconds: 200), removeFromParent);
+    } else if (ec.progress > 0.7 && !isCollide) {
       isCollide = true;
       priority = 1000;
       final playerAbs = gameRef.player.absoluteCenter.x;
       final l = playerAbs < (gameRef.size.x / 2) - ex.x / 6;
       final r = playerAbs > (gameRef.size.x / 2) + ex.x / 6;
       final isLeftSided = gameRef.player.absoluteCenter.x <= gameRef.size.x / 2;
-      if (isLeft && isLeftSided) {
-        if (l || r) {
+      if (l || r) {
+        if (isLeft && isLeftSided) {
           if (isTheAnswer) {
             game.answerCorrect();
           } else {
+            print("SALAH NABRAK");
             game.gameover();
           }
-        } else {
-          game.gameover();
+        } else if (!isLeft && !isLeftSided) {
+          if (isTheAnswer) {
+            game.answerCorrect();
+          } else {
+            print("SALAH NABRAK");
+            game.gameover();
+          }
         }
       }
       sync.Timer(const Duration(milliseconds: 200), removeFromParent);

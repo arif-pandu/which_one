@@ -99,7 +99,7 @@ class GameplayFlame extends FlameGame with PanDetector, HasCollisionDetection {
     scoreText = TextComponent()
       ..text = '0'
       ..size = Vector2(size.x * .1, size.x * .1)
-      ..position = Vector2(size.x - 10, size.y * .1)
+      ..position = Vector2(size.x - 10, 40 + size.y * 0.025)
       ..anchor = Anchor.centerRight;
     player = SpriteAnimationComponent()
       ..animation = await loadSpriteAnimation(
@@ -150,7 +150,6 @@ class GameplayFlame extends FlameGame with PanDetector, HasCollisionDetection {
       isFirstSpawn = false;
       questionText.text = questionsData[randomIndex][0];
     }
-    print(randomIndex);
     add(
       GateObject(
         isTheAnswer: questionsData[randomIndex][3] == 'left',
@@ -271,7 +270,6 @@ class GateObject extends SpriteComponent with HasGameRef<GameplayFlame> {
     textComponent.position = size / 2;
     if (ec.progress > 0.7 && !isCollide) {
       isCollide = true;
-      priority = 1000;
       final playerAbs = gameRef.player.absoluteCenter.x;
       final l = playerAbs < (gameRef.size.x / 2) - ex.x / 6;
       final r = playerAbs > (gameRef.size.x / 2) + ex.x / 6;
@@ -290,7 +288,10 @@ class GateObject extends SpriteComponent with HasGameRef<GameplayFlame> {
             game.gameover();
           }
         }
+      } else {
+        game.gameover();
       }
+      priority = 1000;
       sync.Timer(const Duration(milliseconds: 200), removeFromParent);
     }
     super.update(dt);

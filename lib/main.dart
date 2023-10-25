@@ -150,6 +150,7 @@ class GameplayFlame extends FlameGame with PanDetector, HasCollisionDetection {
       isFirstSpawn = false;
       questionText.text = questionsData[randomIndex][0];
     }
+    print(randomIndex);
     add(
       GateObject(
         isTheAnswer: questionsData[randomIndex][3] == 'left',
@@ -186,9 +187,15 @@ class GameplayFlame extends FlameGame with PanDetector, HasCollisionDetection {
   void resetGame() {
     isGameOver = false;
     scoreText.text = '0';
+    isFirstSpawn = true;
+    for (final obj in children) {
+      if (obj is GateObject) {
+        obj.removeFromParent();
+      }
+    }
+    spawnGates();
     gateSpawner.reset();
     player.position.x = size.x / 2;
-    isFirstSpawn = true;
   }
 
   void pauseGame() {
@@ -262,10 +269,7 @@ class GateObject extends SpriteComponent with HasGameRef<GameplayFlame> {
   @override
   void update(double dt) {
     textComponent.position = size / 2;
-    if (ec.progress > 0.75) {
-      print("JUST REMOVE HERE");
-      sync.Timer(const Duration(milliseconds: 200), removeFromParent);
-    } else if (ec.progress > 0.7 && !isCollide) {
+    if (ec.progress > 0.7 && !isCollide) {
       isCollide = true;
       priority = 1000;
       final playerAbs = gameRef.player.absoluteCenter.x;
@@ -277,14 +281,12 @@ class GateObject extends SpriteComponent with HasGameRef<GameplayFlame> {
           if (isTheAnswer) {
             game.answerCorrect();
           } else {
-            print("SALAH NABRAK");
             game.gameover();
           }
         } else if (!isLeft && !isLeftSided) {
           if (isTheAnswer) {
             game.answerCorrect();
           } else {
-            print("SALAH NABRAK");
             game.gameover();
           }
         }

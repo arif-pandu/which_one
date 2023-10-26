@@ -64,9 +64,7 @@ class GameplayFlame extends FlameGame with PanDetector, HasCollisionDetection {
   bool isFirstSpawn = true;
 
   @override
-  Color backgroundColor() {
-    return const Color(0xff25253D);
-  }
+  Color backgroundColor() => const Color(0xff25253D);
 
   @override
   FutureOr<void> onLoad() async {
@@ -75,9 +73,7 @@ class GameplayFlame extends FlameGame with PanDetector, HasCollisionDetection {
     questionsData = (jsonMap['question'] as List<dynamic>)
         .map(
           (questionData) => (questionData as List<dynamic>)
-              .map(
-                (answer) => answer.toString(),
-              )
+              .map((answer) => answer.toString())
               .toList(),
         )
         .toList();
@@ -249,9 +245,7 @@ class GateObject extends SpriteComponent with HasGameRef<GameplayFlame> {
     );
     textComponent = TextComponent()
       ..textRenderer = TextPaint(
-        style: const TextStyle(
-          color: Color(0xff25253D),
-        ),
+        style: const TextStyle(color: Color(0xff25253D)),
       )
       ..text = displayText
       ..anchor = Anchor.center
@@ -274,22 +268,10 @@ class GateObject extends SpriteComponent with HasGameRef<GameplayFlame> {
       final l = playerAbs < (gameRef.size.x / 2) - ex.x / 6;
       final r = playerAbs > (gameRef.size.x / 2) + ex.x / 6;
       final isLeftSided = gameRef.player.absoluteCenter.x <= gameRef.size.x / 2;
-      if (l || r) {
-        if (isLeft && isLeftSided) {
-          if (isTheAnswer) {
-            game.answerCorrect();
-          } else {
-            game.gameover();
-          }
-        } else if (!isLeft && !isLeftSided) {
-          if (isTheAnswer) {
-            game.answerCorrect();
-          } else {
-            game.gameover();
-          }
-        }
-      } else {
+      if (!l && !r) {
         game.gameover();
+      } else if ((isLeft && isLeftSided) || (!isLeft && !isLeftSided)) {
+        isTheAnswer ? game.answerCorrect() : game.gameover();
       }
       priority = 1000;
       sync.Timer(const Duration(milliseconds: 200), removeFromParent);
